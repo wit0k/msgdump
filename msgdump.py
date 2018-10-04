@@ -2,7 +2,7 @@ __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
 __version__ = '0.0.1'
 
-import olefile as OleFile
+import olefile as OleFile  # pip install olefile
 import glob
 import re
 import argparse
