@@ -452,7 +452,7 @@ def main(argv):
                              default=False, help="Dump attachments")
 
     script_args.add_argument("-df", "--dump-folder", action='store', dest='dump_folder', required=False, default=False,
-                             help="Dump attachments")
+                             help="Folder where dumped attachments would be saved")
 
     script_args.add_argument("-de", "--dump-extension", action='store', dest='dump_extension',
                              required=False, default=None, help="Dump only given extension")
