@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -28,19 +28,36 @@ class Attachment:
         # Get attachment data
         self.data = msg._getStream([dir_,'__substg1.0_37010102'])
 
-    def save(self, backup_file_name):
-        # Use long filename as first preference
-        filename = self.longFilename
-        # Otherwise use the short filename
-        if filename is None:
-            filename = self.shortFilename
-        # Otherwise just make something up!
-        if filename is None:
-            filename = backup_file_name
+    def save(self, dest_folder, backup_file_name, extension_to_dump=None):
 
-        f = open(filename, 'wb')
-        f.write(self.data)
-        f.close()
+        if os.path.isdir(dest_folder):
+
+            # Use long filename as first preference
+            filename = self.longFilename
+            if filename:
+                filename = msgdump.bytes_to_windows_string(self, filename)
+            # Otherwise use the short filename
+
+            if filename is None:
+                filename = self.shortFilename
+            # Otherwise just make something up!
+            if filename is None:
+                filename = backup_file_name
+
+            if extension_to_dump:
+                if extension_to_dump in filename:
+                    f = open(dest_folder + filename, 'wb')
+                    f.write(self.data)
+                    f.close()
+            else:
+                f = open(dest_folder + filename, 'wb')
+                f.write(self.data)
+                f.close()
+
+        else:
+            print('Destination folder: %s -> Not found !' % dest_folder)
+            return ''
+
         return filename
 
 class msgdump(OleFile.OleFileIO):
@@ -139,7 +156,9 @@ class text_parser(object):
     columns_to_print = ['file_path', 'type', 'tracking_id', 'subject', 'Submission_Date', 'Submitter', 'files_submitted']
 
     string_type_mapping = {
-        '[CLOSED]: Symantec Security Response Automation': 'Symantec Submission Closure'
+        '[CLOSED]: Symantec Security Response Automation': 'Symantec Submission Closure',
+        'Symantec Security Response Scribe Automation': 'Symantec Scribe Report'
+
     }
 
     def split(self, strng, sep, pos):
@@ -159,26 +178,29 @@ class text_parser(object):
         if input_type == 'Symantec Submission Closure':
             _, __, tracking_id = input_string.rpartition('#')
             return tracking_id[:-1]
+        elif input_type == 'Symantec Scribe Report':
+            _, __, tracking_id = input_string.rpartition('#')
+            return tracking_id[:-8]
         else:
             return 'Unknown input string'
 
     def _get_submission_date(self, input_string, input_type):
 
-        if input_type == 'Symantec Submission Closure':
+        if input_type in ['Symantec Submission Closure','Symantec Scribe Report']:
             _submission_date = re.findall(r'^Submission Date(.+)$', input_string, re.IGNORECASE + re.MULTILINE)
 
             if _submission_date == []:
                 _submission_date = 'Unknown Submission Date'
             else:
                 _submission_date = _submission_date[0].strip()
-
-            return _submission_date
         else:
             return 'Unknown input string'
 
+        return _submission_date
+
     def _get_submitter(self, input_string, input_type):
 
-        if input_type == 'Symantec Submission Closure':
+        if input_type in ['Symantec Submission Closure','Symantec Scribe Report']:
             output = re.findall(r'^Submitter(.+)$', input_string, re.IGNORECASE + re.MULTILINE)
 
             if output == []:
@@ -345,8 +367,6 @@ class text_parser(object):
         else:
             return []
 
-
-
     def __init__(self, file_path, mail_subject, mail_body, mail_attachments):
 
         self.result = []
@@ -401,7 +421,15 @@ def print_submitted_files(items):
 
                 # Strip the elements of the list
                 map(str.strip, files)
+                
                 print(*files, sep=', ')
+
+
+def _save_attachments(dest_folder, attachments, backup_file_name, extension_to_dump=None):
+
+    for attachment in attachments:
+        attachment.save(dest_folder=dest_folder, backup_file_name=backup_file_name, extension_to_dump=extension_to_dump)
+
 
 def main(argv):
 
@@ -419,6 +447,16 @@ def main(argv):
 
     script_args.add_argument("--symc-submissions", action='store_true', dest='symc_print_submissions', required=False,
                              default=False, help="Print details according to file submissions sent to Symantec")
+
+    script_args.add_argument("-da", "--dump-attachments", action='store_true', dest='dump_attachments', required=False,
+                             default=False, help="Dump attachments")
+
+    script_args.add_argument("-df", "--dump-folder", action='store', dest='dump_folder', required=False, default=False,
+                             help="Dump attachments")
+
+    script_args.add_argument("-de", "--dump-extension", action='store', dest='dump_extension',
+                             required=False, default=None, help="Dump only given extension")
+
 
     args = argsparser.parse_args()
     argc = argv.__len__()
@@ -448,6 +486,10 @@ def main(argv):
 
     if args.symc_print_submissions:
         print_submitted_files(items=rows)
+
+    if args.dump_attachments:
+        _save_attachments(dest_folder='dump/', attachments=attachments, backup_file_name='XXX.sample',
+                          extension_to_dump=args.dump_extension)
 
 if __name__ == "__main__":
     main(sys.argv)
