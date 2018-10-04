@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -398,6 +398,9 @@ def print_submitted_files(items):
                 files.append(submission_date)
                 tracking_id = item.get('tracking_id', '')
                 files.insert(0, tracking_id)
+
+                # Strip the elements of the list
+                map(str.strip, files)
                 print(*files, sep=', ')
 
 def main(argv):
