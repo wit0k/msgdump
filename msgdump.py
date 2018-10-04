@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -8,6 +8,7 @@ import re
 import argparse
 import sys
 import os.path
+import md.hasher as hashlib
 
 """ Set working directory so the script can be executed from any location/symlink """
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -108,8 +109,6 @@ class msgdump(OleFile.OleFileIO):
 
         return self._attachments
 
-
-
     def _getStringStream(self, stream_name, prefer='unicode'):
 
         _stream_name = self.email_part.get(stream_name, stream_name)
@@ -143,6 +142,10 @@ class text_parser(object):
     string_type_mapping = {
         '[CLOSED]: Symantec Security Response Automation': 'Symantec Submission Closure'
     }
+
+    def split(self, strng, sep, pos):
+        strng = strng.split(sep)
+        return sep.join(strng[:pos]), sep.join(strng[pos:])
 
     def _get_type(self, input_string):
 
@@ -272,36 +275,67 @@ class text_parser(object):
                         _line = files_submitted_section[index].strip()
                     except IndexError:
                         status_ok = True
+                        break
 
                     if re.search('^[0-9]{1,2}', _line, re.IGNORECASE + re.MULTILINE):
 
                         #  Check of the record is corrupted (contains next file)
-                        _file.extend(files_submitted_section[index:index + 6])
+                        _items = files_submitted_section[index:index + 6]
+                        _file.extend(_items)
 
-                        last_item = _file[-1:][0].strip()
+                        try:
+                            last_item = _file[-1:][0].strip()
+                        except IndexError:
+                            test = ""
+
                         pos_of_next_file = re.search('^[0-9]{1,2}$', last_item, re.IGNORECASE)
 
+                        #  FIX:  Due to inconsistent body content. The hash lands in the file name
+                        if ' ' in _file[1]:
+                            file_name, __, _hash = _file[1].rpartition(' ')
+
+                            if len(_hash) == 32:
+                                _file[1] = file_name
+                                _file.insert(2, _hash)
+
+                        #  FIX1:  Due to inconsistent body content, a tab between hash and determination is a space!
+                        if ' ' in _file[2]:
+                            fields = _file[2].split(' ', maxsplit=1)
+                            _file[2] = fields[0]
+                            _file.insert(3, fields[1])
+
+                        # FIX2:  Due to inconsistent body content:
+                        #  Determination column, contains unexpected space instead of a tab
+                        if ' ' in _file[3]:
+                            correct_format = None
+                            if any(determination in _file[3] for determination in ['Not Malicious', 'Data File',
+                                                                                   'Threat artifact', 'New Threat',
+                                                                                   'Already Detected']):
+                                if _file[3].count(' ') > 1:
+                                    fields = self.split(_file[3], ' ', 2)
+                                    correct_format = False
+                                else:
+                                    correct_format = True
+                            else:
+                                fields = _file[3].split(' ', maxsplit=1)
+
+                            if not correct_format:
+                                _file[3] = fields[0]
+                                _file.insert(4, fields[1])
+
+                        # FIX3:  Due to inconsistent body content, If a detection name is N/A, Symantec uses a
+                        #  space instead of tab between file name and a detection name
+                        if ' N/A' in _file[3]:
+                            _file[3] = _file[3].replace(' N/A', '')
+                            _file.append('N/A')
+
                         if pos_of_next_file:
-
-                            #  FIX1:  Due to inconsistent body content, a tab between hash and determination is a space!
-                            if ' ' in _file[2]:
-                                fields = _file[2].split(' ', maxsplit=1)
-                                _file[2] = fields[0]
-                                _file.insert(3, fields[1])
-
-                            #  FIX2:  Due to inconsistent body content, If a detection name is N/A, Symantec uses a
-                            #  space instead of tab between file name and a detection name
-                            if ' N/A' in _file[3]:
-                                _file[3] = _file[3].replace(' N/A', '')
-                                _file.append('N/A')
-
                             index = index + 5
                             _file = _file[:-1]
-
                         else:
                             index += 6
 
-                        files.append(_file)
+                        files.append(_file[0:6])
                         _file = []
 
                     else:
