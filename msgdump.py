@@ -8,7 +8,6 @@ import re
 import argparse
 import sys
 import os.path
-import md.hasher as hashlib
 
 """ Set working directory so the script can be executed from any location/symlink """
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -397,6 +396,8 @@ def print_submitted_files(items):
             for files in submitted_files:
                 submission_date = item.get('Submission_Date', '')
                 files.append(submission_date)
+                tracking_id = item.get('tracking_id', '')
+                files.insert(0, tracking_id)
                 print(*files, sep=', ')
 
 def main(argv):
