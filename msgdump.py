@@ -421,7 +421,7 @@ def print_submitted_files(items):
 
                 # Strip the elements of the list
                 map(str.strip, files)
-                
+
                 print(*files, sep=', ')
 
 
