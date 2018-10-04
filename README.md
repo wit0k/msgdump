@@ -16,7 +16,7 @@ Script arguments:
   -da, --dump-attachments
                         Dump attachments
   -df DUMP_FOLDER, --dump-folder DUMP_FOLDER
-                        Dump attachments
+                        Folder where dumped attachments would be saved
   -de DUMP_EXTENSION, --dump-extension DUMP_EXTENSION
                         Dump only given extension
 
