@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -246,9 +246,15 @@ class text_parser(object):
             if 'Submission Hash' in input_string:
 
                 files_submitted_section = input_string_lines[start_index + 1:end_index - 1]
+                test = re.split(r'\r|\t', "".join(files_submitted_section))
+                test = [item.strip() for item in test]
+                [test.remove(item) if item == '' or item == ' ' else item.strip() for item in test]
 
-                for _line in files_submitted_section:
+                for _line in test:
                     _line = _line.strip()
+
+                    if 'WinUpdateexe.exe' in _line:
+                        test = ""
 
                     if re.search('^[0-9]{1,2}$', _line, re.IGNORECASE):
 
@@ -258,25 +264,39 @@ class text_parser(object):
                         continue
 
                     if next_line == 'filename':
-                        _file.append(_line)
-                        next_line = 'parse_details'
+                        _file.append(str(_line))
+                        next_line = 'md5'
                         continue
 
-                    if next_line == 'parse_details':
-                        items = _line.split('\t')
-                        for _item in items:
-                            _file.append(_item.strip())
+                    if next_line == 'md5':
+                        _file.append(str(_line))
+                        next_line = 'determination'
+                        continue
 
+                    if next_line == 'determination':
+                        _file.append(str(_line))
+                        next_line = 'signature'
+                        continue
+
+                    if next_line == 'signature':
+                        _file.append(str(_line))
                         next_line = 'RR Seq'
                         continue
 
                     if next_line == 'RR Seq':
-                        _file.append(_line)
+                        _file.append(str(_line))
                         files.append(_file[1:])
                         _file = []
+                        next_line = None
 
             else:
                 files_submitted_section = input_string_lines[start_index + 3:end_index - 1]
+
+                test = re.split(r'\r|\t', "".join(files_submitted_section))
+                test = [item.strip() for item in test]
+                [test.remove(item) if item == '' or item == ' ' else item.strip() for item in test]
+
+                """
                 files_submitted_section = "".join(files_submitted_section)
                 files_submitted_section = files_submitted_section.replace('\r', ' ')
                 files_submitted_section = re.sub(r'\t{1,}', '\t', files_submitted_section)
@@ -285,31 +305,49 @@ class text_parser(object):
                 files_submitted_section = re.sub(r'\t ', '\t', files_submitted_section)
                 files_submitted_section = re.sub(r' \t', '\t', files_submitted_section)
                 files_submitted_section = files_submitted_section.split('\t')
+                """
 
                 index = 0
                 status_ok = False
                 while not status_ok:
-                    if index > len(files_submitted_section) or index > 100:
+                    #if index > len(files_submitted_section) or index > 100:
+                    if index > len(test) or index > 100:
                         status_ok = True
 
                     try:
-                        _line = files_submitted_section[index].strip()
+                        #_line = files_submitted_section[index].strip()
+                        _line = test[index].strip()
+
+                        if '3' in _line:
+                            X = ""
+
                     except IndexError:
                         status_ok = True
                         break
 
-                    if re.search('^[0-9]{1,2}', _line, re.IGNORECASE + re.MULTILINE):
+                    if re.search('^[0-9]{1,2}$', _line, re.IGNORECASE + re.MULTILINE):
 
                         #  Check of the record is corrupted (contains next file)
-                        _items = files_submitted_section[index:index + 6]
+                        #_items = files_submitted_section[index:index + 6]
+                        _items = test[index:index + 7]
                         _file.extend(_items)
 
                         try:
                             last_item = _file[-1:][0].strip()
+                            look_behind = _file[-2:][0].strip()
                         except IndexError:
-                            test = ""
+                            X = ""
 
                         pos_of_next_file = re.search('^[0-9]{1,2}$', last_item, re.IGNORECASE)
+                        if not pos_of_next_file:
+                            pos_of_next_file = re.search('^[0-9]{1,2} ', look_behind, re.IGNORECASE)
+
+                        # FIX:  Due to inconsistent body content. The hash lands in the index
+                        if ' ' in _file[0]:
+                            _index, __, file_name = _file[0].partition(' ')
+
+                            _file[0] = _index
+                            _file[1] = file_name
 
                         #  FIX:  Due to inconsistent body content. The hash lands in the file name
                         if ' ' in _file[1]:
@@ -324,6 +362,14 @@ class text_parser(object):
                             fields = _file[2].split(' ', maxsplit=1)
                             _file[2] = fields[0]
                             _file.insert(3, fields[1])
+
+
+                        if not ' ' in _file[3] and any(determination in _file[3] for determination in ['Not', 'Data',
+                                                                               'Threat', 'New',
+                                                                               'Already']):
+                            _file[3] = _file[3] + ' ' + _file[4]
+                            _file.remove(_file[4])
+
 
                         # FIX2:  Due to inconsistent body content:
                         #  Determination column, contains unexpected space instead of a tab
@@ -353,10 +399,12 @@ class text_parser(object):
                         if pos_of_next_file:
                             index = index + 5
                             _file = _file[:-1]
+                            #_file = _file[0:5]
+                            files.append(_file)
                         else:
                             index += 6
+                            files.append(_file[0:6])
 
-                        files.append(_file[0:6])
                         _file = []
 
                     else:
