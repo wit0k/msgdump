@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.6'
+__version__ = '0.0.7'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -187,7 +187,10 @@ class text_parser(object):
     def _get_submission_date(self, input_string, input_type):
 
         if input_type in ['Symantec Submission Closure','Symantec Scribe Report']:
-            _submission_date = re.findall(r'^Submission Date(.+)$', input_string, re.IGNORECASE + re.MULTILINE)
+            _submission_date = re.findall(r'^Submission Date(.+)Tracking', input_string, re.IGNORECASE + re.MULTILINE)
+
+            if not _submission_date:
+                _submission_date = re.findall(r'([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})', input_string, re.IGNORECASE + re.MULTILINE)
 
             if _submission_date == []:
                 _submission_date = 'Unknown Submission Date'
