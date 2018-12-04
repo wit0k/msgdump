@@ -15,6 +15,7 @@ Script arguments:
                         Symantec
   -da, --dump-attachments
                         Dump attachments
+  -du, --dump-urls      Dump URLs from e-mail body
   -df DUMP_FOLDER, --dump-folder DUMP_FOLDER
                         Folder where dumped attachments would be saved
   -de DUMP_EXTENSION, --dump-extension DUMP_EXTENSION

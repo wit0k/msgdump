@@ -520,7 +520,7 @@ def main(argv):
                              default=False, help="Dump attachments")
 
     script_args.add_argument("-du", "--dump-urls", action='store_true', dest='dump_urls', required=False,
-                             default=False, help="Dump attachments")
+                             default=False, help="Dump URLs from e-mail body")
 
     script_args.add_argument("-df", "--dump-folder", action='store', dest='dump_folder', required=False, default=False,
                              help="Folder where dumped attachments would be saved")
