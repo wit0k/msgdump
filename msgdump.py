@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.7'
+__version__ = '0.0.8'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -8,6 +8,7 @@ import re
 import argparse
 import sys
 import os.path
+import iocextract
 
 """ Set working directory so the script can be executed from any location/symlink """
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -150,6 +151,22 @@ class msgdump(OleFile.OleFileIO):
                 return unicode_string
             else:
                 return ascii_string
+
+
+class body_parser(object):
+
+    def __init__(self, email_body):
+        self.body = email_body
+
+    def get_urls(self):
+        urls = []
+        if isinstance(self.body, str):
+            urls = list(iocextract.extract_urls(self.body, refang=True))
+        else:
+            print('E-mail body is not a string !')
+
+        return urls
+
 
 class text_parser(object):
 
@@ -502,6 +519,9 @@ def main(argv):
     script_args.add_argument("-da", "--dump-attachments", action='store_true', dest='dump_attachments', required=False,
                              default=False, help="Dump attachments")
 
+    script_args.add_argument("-du", "--dump-urls", action='store_true', dest='dump_urls', required=False,
+                             default=False, help="Dump attachments")
+
     script_args.add_argument("-df", "--dump-folder", action='store', dest='dump_folder', required=False, default=False,
                              help="Folder where dumped attachments would be saved")
 
@@ -518,7 +538,7 @@ def main(argv):
     for filename in glob.glob(args.input):
 
         mail_parser = msgdump(filename=filename)
-
+        _filename = os.path.basename(filename)
         if mail_parser.initialized is None:
             continue
 
@@ -529,8 +549,21 @@ def main(argv):
         if not attachments:
             attachments = []
 
-        output = text_parser(file_path=filename, mail_subject=subject, mail_body=body, mail_attachments=attachments)
-        rows.extend(output.result)
+        if args.dump_urls:
+            if body:
+                entry = []
+                entry.append(_filename)
+                entry.append(subject)
+                _bparser = body_parser(body)
+                urls = _bparser.get_urls()
+                entry.append(';'.join(urls))
+                rows.append(','.join(entry))
+            else:
+                print('No body to parse...')
+
+        elif args.symc_print_submissions:
+            output = text_parser(file_path=filename, mail_subject=subject, mail_body=body, mail_attachments=attachments)
+            rows.extend(output.result)
 
     if args.print_raw_items:
         print_raw_items(items=rows)
