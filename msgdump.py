@@ -569,11 +569,11 @@ def main(argv):
             _save_attachments(dest_folder=args.dump_folder, attachments=attachments, backup_file_name='XXX.sample',
                               extension_to_dump=args.dump_extension)
 
-    if args.print_raw_items:
-        print_raw_items(items=rows)
+        if args.print_raw_items:
+            print_raw_items(items=rows)
 
-    if args.symc_print_submissions:
-        print_submitted_files(items=rows)
+        if args.symc_print_submissions:
+            print_submitted_files(items=rows)
 
 
 
