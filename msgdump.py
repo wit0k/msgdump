@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '1.0.0'
+__version__ = '0.1.0.1'
 
 import olefile as OleFile  # pip install olefile
 import glob
