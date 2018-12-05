@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.8'
+__version__ = '0.0.9'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -565,15 +565,17 @@ def main(argv):
             output = text_parser(file_path=filename, mail_subject=subject, mail_body=body, mail_attachments=attachments)
             rows.extend(output.result)
 
+        if args.dump_attachments:
+            _save_attachments(dest_folder=args.dump_folder, attachments=attachments, backup_file_name='XXX.sample',
+                              extension_to_dump=args.dump_extension)
+
     if args.print_raw_items:
         print_raw_items(items=rows)
 
     if args.symc_print_submissions:
         print_submitted_files(items=rows)
 
-    if args.dump_attachments:
-        _save_attachments(dest_folder='dump/', attachments=attachments, backup_file_name='XXX.sample',
-                          extension_to_dump=args.dump_extension)
+
 
 if __name__ == "__main__":
     main(sys.argv)
