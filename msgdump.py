@@ -472,7 +472,6 @@ class text_parser(object):
 def print_raw_items(items):
 
     if items:
-        print(CYELLOW + 'Raw Items:' + CEND)
         print(*items, sep='\n')
 
 def print_submitted_files(items):
@@ -529,6 +528,8 @@ def main(argv):
                              required=False, default=None, help="Dump only given extension")
 
 
+
+
     args = argsparser.parse_args()
     argc = argv.__len__()
 
@@ -553,11 +554,14 @@ def main(argv):
             if body:
                 entry = []
                 entry.append(_filename)
-                entry.append(subject)
+                entry.append(str(subject))
                 _bparser = body_parser(body)
                 urls = _bparser.get_urls()
                 entry.append(';'.join(urls))
-                rows.append(','.join(entry))
+                try:
+                    rows.append(','.join(entry))
+                except Exception:
+                    debug = ""
             else:
                 print('No body to parse...')
 
