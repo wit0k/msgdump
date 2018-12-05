@@ -1,6 +1,6 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.0.9'
+__version__ = '1.0.0'
 
 import olefile as OleFile  # pip install olefile
 import glob
@@ -29,7 +29,32 @@ class Attachment:
         # Get attachment data
         self.data = msg._getStream([dir_,'__substg1.0_37010102'])
 
+    def get_unique_filename(self, file_path):
+
+        _loop = True
+        index = 0
+
+        if not '.' in file_path:
+            file_path += '.attachment'
+
+        path = os.path.dirname(file_path) + '/'
+        file_name = os.path.basename(file_path)
+
+        if ':' in file_name:
+            file_name = file_name.replace(':', '')
+
+        while _loop:
+            if os.path.isfile(file_path):
+                file_path = path + str(index) + ' - ' + file_name
+                index += 1
+            else:
+                _loop = False
+
+        return path + file_name
+
     def save(self, dest_folder, backup_file_name, extension_to_dump=None):
+
+        f = None
 
         if os.path.isdir(dest_folder):
 
@@ -51,9 +76,26 @@ class Attachment:
                     f.write(self.data)
                     f.close()
             else:
-                f = open(dest_folder + filename, 'wb')
-                f.write(self.data)
-                f.close()
+                try:
+                    if isinstance(filename, bytes):
+                        org_filename = filename
+                        filename = filename.decode('utf8', 'ignore')
+
+                    file_path = dest_folder + filename
+                    file_path = self.get_unique_filename(file_path)
+
+                    f = open(file_path, 'wb')
+                except ValueError:
+                    filename = org_filename.decode('utf-16-le', 'ignore')
+                    file_path = dest_folder + filename
+                    file_path = self.get_unique_filename(file_path)
+                    f = open(file_path, 'wb')
+
+                try:
+                    f.write(self.data)
+                    f.close()
+                except TypeError:
+                    print('WARNING: Unable to save the attachment: %s' % file_path)
 
         else:
             print('Destination folder: %s -> Not found !' % dest_folder)
