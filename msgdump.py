@@ -519,7 +519,6 @@ def print_raw_items(items):
 def print_submitted_files(items):
 
     if items:
-        print(CYELLOW + 'Symantec Submissions:' + CEND)
         for item in items:
             submitted_files = item.get('files_submitted', [])
             for files in submitted_files:
@@ -620,6 +619,8 @@ def main(argv):
 
         if args.symc_print_submissions:
             print_submitted_files(items=rows)
+
+        rows = []
 
 
 
