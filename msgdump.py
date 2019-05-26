@@ -3,12 +3,15 @@ __date__    = "2018-10-04"
 __version__ = '0.1.0.1'
 
 import olefile as OleFile  # pip install olefile
-import glob
 import re
 import argparse
 import sys
 import os.path
 import iocextract
+import glob
+import platform as _os
+from os.path import isfile, isdir
+
 
 """ Set working directory so the script can be executed from any location/symlink """
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -16,6 +19,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 CRED = '\033[91m'
 CYELLOW = '\33[33m'
 CEND = '\033[0m'
+
 
 class Attachment:
 
@@ -107,7 +111,9 @@ class msgdump(OleFile.OleFileIO):
 
     email_part = {
         'body': '__substg1.0_1000',
-        'subject': '__substg1.0_0037'
+        'subject': '__substg1.0_0037',
+        'sender': '__substg1.0_0C1F',
+        'to': '__substg1.0_0E04'
     }
 
     def __init__(self, filename):
@@ -193,6 +199,15 @@ class msgdump(OleFile.OleFileIO):
                 return unicode_string
             else:
                 return ascii_string
+
+    def header(self):
+        try:
+            return self._header
+        except Exception:
+            headerText = self._getStringStream('__substg1.0_007D')
+            self._header = headerText
+
+
 
 
 class body_parser(object):
@@ -539,6 +554,56 @@ def _save_attachments(dest_folder, attachments, backup_file_name, extension_to_d
         attachment.save(dest_folder=dest_folder, backup_file_name=backup_file_name, extension_to_dump=extension_to_dump)
 
 
+def get_input_files(input_path, file_extensions=None, recursive=True):
+
+    if file_extensions is None:
+        file_extensions = []
+    else:
+        file_extensions = list(map(str.lower, file_extensions))
+
+    input_files = []
+
+    if input_path:
+
+        #  Case: The input_path is an existing file
+        if isfile(input_path):
+            file_name, _, file_extension = input_path.rpartition('.')
+            file_extension = '.' + file_extension.upper()
+            input_files.append(input_path)
+
+        #  Case: The input_path is a folder to lookup
+        elif isdir(input_path):
+
+            # Make sure tha the folder path is finished with / or \, hence the glob ** would work properly
+            if 'Darwin' in _os.platform() or 'Linux' in _os.platform():
+                if not input_path[:-1] == r'/':
+                    input_path += r'/'
+
+            elif 'Windows' in _os.platform():
+                if not input_path[:-1] == '\\':
+                    input_path += '\\'
+
+            if recursive:
+                pattern = input_path + '**'
+            else:
+                pattern = input_path + '*'
+
+            for _path in glob.glob(pattern, recursive=recursive):
+
+                #  Add only supported hives
+                if isfile(_path):
+                    file_name, _, file_extension = _path.rpartition('.')
+                    file_extension = '.' + file_extension.upper()
+
+                    if file_extension.lower() in file_extensions:
+                        input_files.append(_path)
+
+        if input_files:
+            input_files = set(input_files)
+            input_files = list(input_files)
+
+    return input_files
+
 def main(argv):
 
     argsparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, description='MSGDump - Dumps info from .msg files')
@@ -569,15 +634,13 @@ def main(argv):
                              required=False, default=None, help="Dump only given extension")
 
 
-
-
     args = argsparser.parse_args()
     argc = argv.__len__()
 
 
     rows = []
 
-    for filename in glob.glob(args.input):
+    for filename in get_input_files(input_path=args.input, file_extensions=['.msg']):
 
         mail_parser = msgdump(filename=filename)
         _filename = os.path.basename(filename)
@@ -585,6 +648,9 @@ def main(argv):
             continue
 
         subject = mail_parser._getStringStream('subject')
+        sender = mail_parser._getStringStream('sender')
+        to = mail_parser._getStringStream('to')
+
         body = mail_parser._getStringStream('body')
         attachments = mail_parser._getAttachments()
 
@@ -595,6 +661,10 @@ def main(argv):
             if body:
                 entry = []
                 entry.append(_filename)
+
+                entry.append(sender)
+                entry.append(to)
+
                 entry.append(str(subject))
                 _bparser = body_parser(body)
                 urls = _bparser.get_urls()
