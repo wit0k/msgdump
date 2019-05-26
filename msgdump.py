@@ -20,6 +20,7 @@ CRED = '\033[91m'
 CYELLOW = '\33[33m'
 CEND = '\033[0m'
 
+TYPE_RECIPIENT = 3
 
 class Attachment:
 
@@ -134,6 +135,26 @@ class msgdump(OleFile.OleFileIO):
             self.ole = OleFile.OleFileIO(filename)
             self.initialized = True
 
+        prefix = ''
+        prefixl = []
+        tmp_condition = prefix != ''
+        if tmp_condition:
+            if not isinstance(prefix, str):
+                try:
+                    prefix = '/'.join(prefix)
+                except:
+                    raise TypeError('Invalid prefix type: ' + str(type(prefix)) +
+                                    '\n(This was probably caused by you setting it manually).')
+            prefix = prefix.replace('\\', '/')
+            g = prefix.split("/")
+            if g[-1] == '':
+                g.pop()
+            prefixl = g
+            if prefix[-1] != '/':
+                prefix += '/'
+        self.__prefix = prefix
+        self.__prefixList = prefixl
+
     def list_streams(self):
         print(*self.ole.listdir(), sep='\n')
 
@@ -207,6 +228,114 @@ class msgdump(OleFile.OleFileIO):
             headerText = self._getStringStream('__substg1.0_007D')
             self._header = headerText
 
+    def recipients(self):
+        """
+        Returns a list of all recipients.
+        """
+        try:
+            return self._recipients
+        except AttributeError:
+            # Get the recipients
+            recipientDirs = []
+
+            for dir_ in self.ole.listdir():
+                if dir_[len(self.__prefixList)].startswith('__recip') and \
+                                dir_[len(self.__prefixList)] not in recipientDirs:
+                    recipientDirs.append(dir_[len(self.__prefixList)])
+
+            self._recipients = []
+
+            for recipientDir in recipientDirs:
+                self._recipients.append(Recipient(recipientDir, self, self.__prefix))
+
+            return self._recipients
+
+
+class Recipient(object):
+    """
+    Contains the data of one of the recipients in an msg file.
+    """
+    def fix_path(self, inp, prefix=True):
+        """
+        Changes paths so that they have the proper
+        prefix (should :param prefix: be True) and
+        are strings rather than lists or tuples.
+        """
+        if isinstance(inp, (list, tuple)):
+            inp = '/'.join(inp)
+        if prefix:
+            inp = self.prefix_value + inp
+        return inp
+
+    def windowsUnicode(self, string):
+        return str(string, 'utf_16_le') if string is not None else None
+        return ""
+
+    def _getStreamA(self, filename):
+
+        try:
+            with self.__msg.openstream(filename) as stream:
+                return stream.read()
+        except OSError:
+            # print('Stream "{}" was requested but could not be found. Returning `None`.'.format(filename))
+            return None
+
+    def _getStringStreamA(self, filename, prefer='unicode', prefix=True):
+        """
+        Gets a string representation of the requested filename.
+        Checks for both ASCII and Unicode representations and returns
+        a value if possible.  If there are both ASCII and Unicode
+        versions, then :param prefer: specifies which will be
+        returned.
+        """
+
+        # '__recip_version1.0_#00000000/__substg1.0_39FE001F'
+
+        filename = self.fix_path(filename, prefix)
+
+        asciiVersion = self._getStreamA(filename + '001E')
+        unicodeVersion = self._getStreamA(filename + '001F')
+
+        unicodeVersion = self.windowsUnicode(string=unicodeVersion)
+
+        if asciiVersion is None:
+            return unicodeVersion
+        elif unicodeVersion is None:
+            return asciiVersion
+        else:
+            if prefer == 'unicode':
+                return unicodeVersion
+            else:
+                return asciiVersion
+
+    def __init__(self, _dir, msg, prefix_value=''):
+        object.__init__(self)
+        self.prefix_value = prefix_value
+        self.__msg = msg  # Allows calls to original msg file
+        self.__dir = _dir
+        # self.__props = Properties(self._getStream('__properties_version1.0'), TYPE_RECIPIENT)
+        self.__email = self._getStringStream('__substg1.0_39FE')
+        if not self.__email:
+            self.__email = self._getStringStream('__substg1.0_3003')
+        self.__name = self._getStringStream('__substg1.0_3001')
+        # self.__type = self.__props.get('0C150003').value
+        self.__formatted = u'{0} <{1}>'.format(self.__name, self.__email)
+
+    def _getStream(self, filename):
+        return self.__msg._getStream([self.__dir, filename])
+
+    def _getStringStream(self, filename):
+        """
+        Gets a string representation of the requested filename.
+        Checks for both ASCII and Unicode representations and returns
+        a value if possible.  If there are both ASCII and Unicode
+        versions, then :param prefer: specifies which will be
+        returned.
+        """
+        return self._getStringStreamA([self.__dir, filename])
+
+    def email(self):
+        return self.__email
 
 
 
@@ -654,21 +783,30 @@ def main(argv):
         body = mail_parser._getStringStream('body')
         attachments = mail_parser._getAttachments()
 
+        recipients = []
+        recipients_obj = mail_parser.recipients()
+
+        for recipient_obj in recipients_obj:
+            recipients.append(recipient_obj.email())
+
+        recipients = ';'.join(recipients)
+
         if not attachments:
             attachments = []
 
         if args.dump_urls:
             if body:
                 entry = []
+
                 entry.append(_filename)
-
                 entry.append(sender)
-                entry.append(to)
-
+                entry.append(recipients)
                 entry.append(str(subject))
+
                 _bparser = body_parser(body)
                 urls = _bparser.get_urls()
                 entry.append(';'.join(urls))
+
                 try:
                     rows.append(','.join(entry))
                 except Exception:
