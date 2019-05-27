@@ -768,6 +768,7 @@ def main(argv):
 
 
     rows = []
+    write_csv_header = True
 
     for filename in get_input_files(input_path=args.input, file_extensions=['.msg']):
 
@@ -796,6 +797,11 @@ def main(argv):
 
         if args.dump_urls:
             if body:
+
+                if write_csv_header:
+                    rows.append('filename,sender,recipients,subject,urls')
+                    write_csv_header = False
+
                 entry = []
 
                 entry.append(_filename)
