@@ -356,11 +356,53 @@ class body_parser(object):
 
 class text_parser(object):
 
+    category_mappings = {
+        'Computer/Information Security': '108', 'For Kids': '87', 'Alcohol': '23',
+        'Entertainment': '20', 'Travel': '66',
+        'Proxy Avoidance': '86', 'Potentially Unwanted Software': '102',
+        'Charitable Organizations': '29', 'Weapons': '15',
+        'Religion': '54', 'Health': '37', 'Sexual Expression': '93',
+        'File Storage/Sharing': '56', 'Gambling': '11',
+        'Software Downloads': '71', 'Email': '52', 'News/Media': '46',
+        'Personals/Dating': '47', 'Adult/Mature Content': '1',
+        'Newsgroups/Forums': '53', 'Piracy/Copyright Concerns': '118',
+        'Mixed Content/Potentially Adult': '50', 'Shopping': '58',
+        'Remote Access Tools': '57', 'Business/Economy': '21', 'Informational': '107',
+        'Non-Viewable/Infrastructure': '96',
+        'Society/Daily Living': '61', 'Peer-to-Peer (P2P)': '83', 'Media Sharing': '112',
+        'Scam/Questionable/Illegal': '9',
+        'Audio/Video Clips': '84', 'Humor/Jokes': '68', 'Spam': '101',
+        'Office/Business Applications': '85',
+        'Political/Social Advocacy': '36', 'Internet Connected Devices': '109',
+        'Translation': '95',
+        'Alternative Spirituality/Belief': '22', 'Extreme': '7', 'Online Meetings': '111',
+        'Sex Education': '4',
+        'Web Ads/Analytics': '88', 'Technology/Internet': '38', 'Tobacco': '24',
+        'Art/Culture': '30', 'Phishing': '18',
+        'Intimate Apparel/Swimsuit': '5', 'Vehicles': '67', 'Abortion': '16',
+        'Web Hosting': '89', 'TV/Video Streams': '114',
+        'Controlled Substances': '25', 'Malicious Outbound Data/Botnets': '44', 'Games': '33',
+        'Auctions': '59',
+        'Brokerage/Trading': '32', 'Military': '35', 'Hacking': '17',
+        'E-Card/Invitations': '106', 'Social Networking': '55',
+        'Chat (IM)/SMS': '51', 'Sports/Recreation': '65', 'Search Engines/Portals': '40',
+        "I Don't Know": '90', 'Job Search/Careers': '45',
+        'Reference': '49', 'Content Servers': '97', 'Nudity': '6',
+        'Restaurants/Dining/Food': '64', 'Suspicious': '92',
+        'Child Pornography': '26', 'Marijuana': '121', 'Placeholders': '98',
+        'Radio/Audio Streams': '113', 'Government/Legal': '34',
+        'Financial Services': '31', 'Malicious Sources/Malnets': '43', 'Real Estate': '60',
+        'Pornography': '3', 'Dynamic DNS Host': '103',
+        'Education': '27', 'Internet Telephony': '110', 'Personal Sites': '63',
+        'Violence/Hate/Racism': '14'
+    }
+
     columns_to_print = ['file_path', 'type', 'tracking_id', 'subject', 'Submission_Date', 'Submitter', 'files_submitted']
 
     string_type_mapping = {
         '[CLOSED]: Symantec Security Response Automation': 'Symantec Submission Closure',
-        'Symantec Security Response Scribe Automation': 'Symantec Scribe Report'
+        'Symantec Security Response Scribe Automation': 'Symantec Scribe Report',
+        'Blue Coat Site Review submission': 'Blue Coat Site Review submission'
 
     }
 
@@ -384,6 +426,10 @@ class text_parser(object):
         elif input_type == 'Symantec Scribe Report':
             _, __, tracking_id = input_string.rpartition('#')
             return tracking_id[:-8]
+
+        elif input_type == 'Blue Coat Site Review submission':
+            _, __, tracking_id = input_string.rpartition('#')
+            return tracking_id
         else:
             return 'Unknown input string'
 
@@ -394,13 +440,15 @@ class text_parser(object):
 
             if not _submission_date:
                 _submission_date = re.findall(r'([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})', input_string, re.IGNORECASE + re.MULTILINE)
-
-            if _submission_date == []:
-                _submission_date = 'Unknown Submission Date'
-            else:
-                _submission_date = _submission_date[0].strip()
+        elif input_type in 'Blue Coat Site Review submission':
+            _submission_date = re.findall(r'Reviewed:.*([A-Za-z]{3,}.+?UTC)', input_string, re.IGNORECASE + re.MULTILINE)
         else:
             return 'Unknown input string'
+
+        if _submission_date == []:
+            _submission_date = 'Unknown Submission Date'
+        else:
+            _submission_date = _submission_date[0].strip().replace(',', ';')
 
         return _submission_date
 
@@ -621,6 +669,75 @@ class text_parser(object):
         else:
             return []
 
+    def map_catid_to_categorization(self, catid):
+
+        for key, value in self.category_mappings.items():
+
+            if value == catid:
+                return key
+
+        return 'Unknown category id: %s' % catid
+
+    def _get_proxy_requested_categoization(self, input_string, input_type):
+
+        if input_type in 'Blue Coat Site Review submission':
+
+            input_string = input_string.replace('\n', '')
+            input_string = input_string.replace('\r', ' ')
+
+            _submission_date = re.findall(r'Suggested categories:(.*?)Your', input_string, re.IGNORECASE + re.MULTILINE)
+
+            if not _submission_date:
+                _submission_date = re.findall(r'Suggested category:(.*?)Your',
+                                              input_string, re.IGNORECASE + re.MULTILINE)
+
+        else:
+            return 'Unknown input string'
+
+        if _submission_date == []:
+            _submission_date = 'Unknown Requested Proxy Categorization'
+        else:
+
+            cat_nums = re.findall(r'catnum=(\d+)\&', _submission_date[0], re.IGNORECASE + re.MULTILINE)
+            _submission_date = []
+
+            for cat_id in cat_nums:
+                _submission_date.append(self.map_catid_to_categorization(cat_id))
+
+            _submission_date = '[%s]' % ';'.join(_submission_date)
+
+        return _submission_date
+
+    def _get_proxy_categoization(self, input_string, input_type):
+
+        if input_type in 'Blue Coat Site Review submission':
+
+            input_string = input_string.replace('\n', '')
+            input_string = input_string.replace('\r', ' ')
+
+            _submission_date = re.findall(r'URL as(.*?)\. ', input_string, re.IGNORECASE + re.MULTILINE)
+
+            if not _submission_date:
+                _submission_date = re.findall(r' as(.*?)\. ', input_string, re.IGNORECASE + re.MULTILINE)
+
+        else:
+            return 'Unknown input string'
+
+        if _submission_date == []:
+            _submission_date = 'Unknown Proxy Categorization'
+        else:
+
+            cat_nums = re.findall(r'catnum=(\d+)\&', _submission_date[0], re.IGNORECASE + re.MULTILINE)
+            _submission_date = []
+
+            for cat_id in cat_nums:
+                _submission_date.append(self.map_catid_to_categorization(cat_id))
+
+            _submission_date = '[%s]' % ';'.join(_submission_date)
+
+        return _submission_date
+
+
     def __init__(self, file_path, mail_subject, mail_body, mail_attachments):
 
         self.result = []
@@ -653,7 +770,18 @@ class text_parser(object):
         _files_submitted = self._get_files_submitted(input_string=mail_body, input_type=_type)
         row['files_submitted'] = _files_submitted
 
+        _proxy_categorization = self._get_proxy_categoization(input_string=mail_body, input_type=_type)
+
+        row['proxy_category'] = _proxy_categorization
+
+        _proxy_requested_categorization = self._get_proxy_requested_categoization(input_string=mail_body, input_type=_type)
+
+        row['requested_proxy_category'] = _proxy_requested_categorization
+
+
         self.result.append(row)
+
+
 
 def print_raw_items(items):
 
@@ -676,6 +804,17 @@ def print_submitted_files(items):
 
                 print(*files, sep=', ')
 
+def print_csv(items, columns):
+
+    row = []
+
+    for item in items:
+        for col in columns:
+            row.append(item.get(col, ''))
+
+        print(','.join(row))
+
+        row = []
 
 def _save_attachments(dest_folder, attachments, backup_file_name, extension_to_dump=None):
 
@@ -753,6 +892,9 @@ def main(argv):
     script_args.add_argument("--symc-submissions", action='store_true', dest='symc_print_submissions', required=False,
                              default=False, help="Print details according to file submissions sent to Symantec")
 
+    script_args.add_argument("--proxy-submissions", action='store_true', dest='proxy_print_submissions', required=False,
+                             default=False, help="Print info about Proxy submissions ")
+
     script_args.add_argument("-da", "--dump-attachments", action='store_true', dest='dump_attachments', required=False,
                              default=False, help="Dump attachments")
 
@@ -827,12 +969,25 @@ def main(argv):
             output = text_parser(file_path=filename, mail_subject=subject, mail_body=body, mail_attachments=attachments)
             rows.extend(output.result)
 
+        elif args.proxy_print_submissions:
+            output = None
+            output = text_parser(file_path=filename, mail_subject=subject, mail_body=body, mail_attachments=attachments)
+            rows.extend(output.result)
+
         if args.dump_attachments:
             _save_attachments(dest_folder=args.dump_folder, attachments=attachments, backup_file_name='XXX.sample',
                               extension_to_dump=args.dump_extension)
 
         if args.print_raw_items:
             print_raw_items(items=rows)
+        elif args.proxy_print_submissions:
+
+            if write_csv_header:
+                print('file_path,tracking_id,Reviewed,requested_proxy_category,proxy_category')
+                write_csv_header = False
+
+            columns = ['file_path', 'tracking_id', 'Submission_Date', 'requested_proxy_category', 'proxy_category']
+            print_csv(output.result, columns)
 
         if args.symc_print_submissions:
             print_submitted_files(items=rows)
