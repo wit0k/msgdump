@@ -737,6 +737,24 @@ class text_parser(object):
 
         return _submission_date
 
+    def _get_submitted_url(self, input_string, input_type):
+
+        if input_type in 'Blue Coat Site Review submission':
+
+            input_string = input_string.replace('\n', '')
+            input_string = input_string.replace('\r', ' ')
+
+            _submission_date = re.findall(r'Submitted URL:(.+)Suggested', input_string, re.IGNORECASE + re.MULTILINE)
+        else:
+            return 'Unknown input string'
+
+        if _submission_date == []:
+            _submission_date = 'Unable to find URL'
+        else:
+
+            _submission_date = '[%s]' % ' '.join(_submission_date).strip()
+
+        return _submission_date
 
     def __init__(self, file_path, mail_subject, mail_body, mail_attachments):
 
@@ -778,6 +796,9 @@ class text_parser(object):
 
         row['requested_proxy_category'] = _proxy_requested_categorization
 
+        submitted_url = self._get_submitted_url(input_string=mail_body, input_type=_type)
+
+        row['submitted_url'] = submitted_url
 
         self.result.append(row)
 
@@ -983,10 +1004,10 @@ def main(argv):
         elif args.proxy_print_submissions:
 
             if write_csv_header:
-                print('file_path,tracking_id,Reviewed,requested_proxy_category,proxy_category')
+                print('file_path,tracking_id,Reviewed,requested_proxy_category,proxy_category,submitted_url')
                 write_csv_header = False
 
-            columns = ['file_path', 'tracking_id', 'Submission_Date', 'requested_proxy_category', 'proxy_category']
+            columns = ['file_path', 'tracking_id', 'Submission_Date', 'requested_proxy_category', 'proxy_category', 'submitted_url']
             print_csv(output.result, columns)
 
         if args.symc_print_submissions:
