@@ -1,6 +1,7 @@
 # msgdump
 
 <pre>
+
 MSGDump - Dumps info from .msg files
 
 optional arguments:
@@ -9,10 +10,12 @@ optional arguments:
 Script arguments:
 
   -i INPUT, --input INPUT
-                        Input file or folder pattern like samples/*.msg
+                        Input file or folder containing .msg files
+  --recursive           Enables recursive search
   --raw                 Print parsed data in raw format
-  --symc-submissions    Print details according to file submissions sent to
-                        Symantec
+  --symc-submissions    Parse submission closure e-mails from Symantec
+                        Security Response
+  --proxy-submissions   Parse Blue Coat Site Review submission e-mails
   -da, --dump-attachments
                         Dump attachments
   -du, --dump-urls      Dump URLs from e-mail body
@@ -20,5 +23,5 @@ Script arguments:
                         Folder where dumped attachments would be saved
   -de DUMP_EXTENSION, --dump-extension DUMP_EXTENSION
                         Dump only given extension
-
+                        
 </pre>

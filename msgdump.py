@@ -908,19 +908,19 @@ def main(argv):
 
     """ Script arguments """
     script_args.add_argument("-i", "--input", type=str, action='store', dest='input', required=True,
-                             help="Input file or folder pattern like samples/*.msg")
+                             help="Input file or folder containing .msg files")
 
     script_args.add_argument("--recursive", action='store_true', dest='recursive_search', required=False,
-                             default=False, help="Print parsed data in raw format")
+                             default=False, help="Enables recursive search")
 
     script_args.add_argument("--raw", action='store_true', dest='print_raw_items', required=False,
                              default=False, help="Print parsed data in raw format")
 
     script_args.add_argument("--symc-submissions", action='store_true', dest='symc_print_submissions', required=False,
-                             default=False, help="Print details according to file submissions sent to Symantec")
+                             default=False, help="Parse submission closure e-mails from Symantec Security Response")
 
     script_args.add_argument("--proxy-submissions", action='store_true', dest='proxy_print_submissions', required=False,
-                             default=False, help="Print info about Proxy submissions ")
+                             default=False, help="Parse Blue Coat Site Review submission e-mails")
 
     script_args.add_argument("-da", "--dump-attachments", action='store_true', dest='dump_attachments', required=False,
                              default=False, help="Dump attachments")
