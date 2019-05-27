@@ -744,6 +744,9 @@ def main(argv):
     script_args.add_argument("-i", "--input", type=str, action='store', dest='input', required=True,
                              help="Input file or folder pattern like samples/*.msg")
 
+    script_args.add_argument("--recursive", action='store_true', dest='recursive_search', required=False,
+                             default=False, help="Print parsed data in raw format")
+
     script_args.add_argument("--raw", action='store_true', dest='print_raw_items', required=False,
                              default=False, help="Print parsed data in raw format")
 
@@ -770,7 +773,7 @@ def main(argv):
     rows = []
     write_csv_header = True
 
-    for filename in get_input_files(input_path=args.input, file_extensions=['.msg']):
+    for filename in get_input_files(input_path=args.input, file_extensions=['.msg'], recursive=args.recursive_search):
 
         mail_parser = msgdump(filename=filename)
         _filename = os.path.basename(filename)
