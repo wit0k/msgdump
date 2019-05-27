@@ -1,13 +1,12 @@
 __author__  = "Witold Lawacz (wit0k)"
 __date__    = "2018-10-04"
-__version__ = '0.1.0.1'
+__version__ = '0.1.0.2'
 
 import olefile as OleFile  # pip install olefile
 import re
 import argparse
 import sys
 import os.path
-import iocextract
 import glob
 import platform as _os
 from os.path import isfile, isdir
@@ -901,6 +900,7 @@ def get_input_files(input_path, file_extensions=None, recursive=True):
 
 def main(argv):
 
+    # -i samples/scribe/*.msg --dump-folder dump/ --dump-attachments --dump-extension pdf -h
     argsparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, description='MSGDump - Dumps info from .msg files')
 
     """ Argument groups """
