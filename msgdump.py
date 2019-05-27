@@ -11,7 +11,7 @@ import iocextract
 import glob
 import platform as _os
 from os.path import isfile, isdir
-
+import iocextract
 
 """ Set working directory so the script can be executed from any location/symlink """
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -406,6 +406,12 @@ class text_parser(object):
 
     }
 
+    def obfuscate(self, url):
+        return iocextract.defang(url)
+
+    def deobfuscate(self, url):
+        return iocextract.refang_url(url)
+
     def split(self, strng, sep, pos):
         strng = strng.split(sep)
         return sep.join(strng[:pos]), sep.join(strng[pos:])
@@ -752,9 +758,9 @@ class text_parser(object):
             _submission_date = 'Unable to find URL'
         else:
 
-            _submission_date = '[%s]' % ' '.join(_submission_date).strip()
+            _submission_date = '%s' % ' '.join(_submission_date).strip()
 
-        return _submission_date
+        return self.obfuscate(url=_submission_date)
 
     def __init__(self, file_path, mail_subject, mail_body, mail_attachments):
 
