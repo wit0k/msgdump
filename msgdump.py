@@ -1021,7 +1021,7 @@ def main(argv):
 
         if args.output_file:
 
-            with open(args.output_file, "w", errors='ignore') as ofile:
+            with open(args.output_file, "a", errors='ignore') as ofile:
 
                 for row in rows:
                     ofile.write(row + '\n')
