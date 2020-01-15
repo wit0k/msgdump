@@ -917,6 +917,9 @@ def main(argv):
     script_args.add_argument("-i", "--input", type=str, action='store', dest='input', required=True,
                              help="Input file or folder containing .msg files")
 
+    script_args.add_argument("-o", "--output", type=str, action='store', dest='output_file', required=False,
+                             help="Output files instead of stdout")
+
     script_args.add_argument("--recursive", action='store_true', dest='recursive_search', required=False,
                              default=False, help="Enables recursive search")
 
@@ -1015,6 +1018,14 @@ def main(argv):
 
         if args.print_raw_items:
             print_raw_items(items=rows)
+
+        if args.output_file:
+
+            with open(args.output_file, "w", errors='ignore') as ofile:
+
+                for row in rows:
+                    ofile.write(row + '\n')
+
         elif args.proxy_print_submissions:
 
             if write_csv_header:
