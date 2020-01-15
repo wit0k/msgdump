@@ -24,6 +24,7 @@ TYPE_RECIPIENT = 3
 class Attachment:
 
     def __init__(self, msg, dir_):
+
         # Get long filename
         self.longFilename = msg._getStream([dir_, '__substg1.0_3707001F'])
 
@@ -213,6 +214,9 @@ class msgdump(OleFile.OleFileIO):
         if ascii_string is None:
             return unicode_string
         elif unicode_string is None:
+
+            if isinstance(ascii_string, bytes):
+                ascii_string = ascii_string.decode(errors='ignore')
             return ascii_string
         else:
             if prefer == 'unicode':
@@ -334,6 +338,9 @@ class Recipient(object):
         return self._getStringStreamA([self.__dir, filename])
 
     def email(self):
+
+        if isinstance(self.__email, bytes):
+            self.__email = self.__email.decode(errors='ignore')
         return self.__email
 
 
@@ -954,6 +961,7 @@ def main(argv):
         to = mail_parser._getStringStream('to')
 
         body = mail_parser._getStringStream('body')
+
         attachments = mail_parser._getAttachments()
 
         recipients = []
